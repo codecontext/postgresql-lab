@@ -21,3 +21,15 @@ python -m uvicorn app.main:app --reload
 
 Open <http://127.0.0.1:8000/health> to check that the API is running, or
 <http://127.0.0.1:8000/health/database> to check the PostgreSQL connection.
+
+## Create the learning schema
+
+With `DATABASE_URL` set, create the sample schema and data by running:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/001_learning_schema.sql
+```
+
+The script creates `learning.students`, `learning.courses`, and
+`learning.enrollments`, then inserts a small set of sample rows. It can be run
+again without duplicating those rows.
