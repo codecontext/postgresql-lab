@@ -1,8 +1,9 @@
-import os
-
-import psycopg
 from fastapi import FastAPI
 from fastapi import HTTPException
+
+from app.database import DatabaseConnectionError
+from app.database import DatabaseNotConfiguredError
+from app.database import check_database_connection
 
 app = FastAPI(title="PostgreSQL Learning Lab")
 
@@ -14,17 +15,14 @@ def health_check() -> dict[str, str]:
 
 @app.get("/health/database")
 def database_health_check() -> dict[str, str]:
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
+    try:
+        check_database_connection()
+    except DatabaseNotConfiguredError as error:
         raise HTTPException(
             status_code=503,
-            detail="DATABASE_URL is not configured",
-        )
-
-    try:
-        with psycopg.connect(database_url, connect_timeout=3) as connection:
-            connection.execute("SELECT 1").fetchone()
-    except psycopg.Error as error:
+            detail=str(error),
+        ) from error
+    except DatabaseConnectionError as error:
         raise HTTPException(
             status_code=503,
             detail="Unable to connect to PostgreSQL",
