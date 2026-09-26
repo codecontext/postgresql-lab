@@ -1,8 +1,7 @@
 # PostgreSQL Learning Lab
 
-A small, hands-on environment for learning PostgreSQL. The application is
-currently a minimal FastAPI foundation; database connections and learning
-features will be added incrementally.
+A small, hands-on environment for learning PostgreSQL. Features are added
+incrementally, with SQL kept visible and PostgreSQL as the source of truth.
 
 ## Requirements
 
@@ -19,7 +18,9 @@ export DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE'
 python -m uvicorn app.main:app --reload
 ```
 
-Open <http://127.0.0.1:8000/health> to check that the API is running, or
+Open <http://127.0.0.1:8000/> for the read-only Database Explorer. It displays
+the `learning` schema after the setup script has been run and `DATABASE_URL` is
+configured. Open <http://127.0.0.1:8000/health> to check the API, or
 <http://127.0.0.1:8000/health/database> to check the PostgreSQL connection.
 
 ## Create the learning schema

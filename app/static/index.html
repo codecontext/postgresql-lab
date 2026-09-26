@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PostgreSQL Learning Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1c2925;
+      --muted: #66736e;
+      --line: #d7dfda;
+      --paper: #f4f7f4;
+      --surface: #ffffff;
+      --green: #176b52;
+      --green-soft: #e4f1eb;
+      --orange: #a54e28;
+      --orange-soft: #f8ece5;
+      --danger: #a33131;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background-color: var(--paper);
+      background-image: radial-gradient(#dfe7e1 0.7px, transparent 0.7px);
+      background-size: 18px 18px;
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .topbar, main {
+      width: min(100% - 40px, 1080px);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand { font-weight: 700; }
+    .brand span { color: var(--green); }
+
+    main { padding: 42px 0 64px; }
+
+    .heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 2rem;
+      font-weight: 500;
+    }
+
+    .subtitle { margin: 9px 0 0; color: var(--muted); }
+
+    button {
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      background: var(--green);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: #10583f; }
+    button:focus-visible { outline: 3px solid #91c9b2; outline-offset: 2px; }
+
+    #status {
+      min-height: 24px;
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    #status[data-state="error"] { color: var(--danger); }
+
+    .table-block {
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+      animation: appear 240ms ease both;
+    }
+
+    .table-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .column-count { color: var(--muted); font-size: 0.85rem; }
+
+    .table-scroll { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 11px 18px; border-bottom: 1px solid #e9eeea; }
+    th { color: var(--muted); font-size: 0.73rem; font-weight: 700; text-transform: uppercase; }
+    td { font-size: 0.9rem; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .identifier { font-family: Consolas, "Liberation Mono", monospace; }
+    .type { color: #355d50; font-family: Consolas, "Liberation Mono", monospace; }
+    .key { display: inline-block; margin-right: 4px; font-size: 0.72rem; font-weight: 700; }
+    .key-primary { color: var(--green); }
+    .key-foreign { color: var(--orange); }
+    .empty {
+      padding: 28px 18px;
+      border: 1px dashed #b9c7bd;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--muted);
+    }
+
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .topbar, main { width: min(100% - 28px, 1080px); }
+      main { padding-top: 30px; }
+      .heading { align-items: start; flex-direction: column; }
+      th, td { padding: 10px 12px; }
+      .table-heading { padding-inline: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand"><span>PG</span> Learning Lab</div>
+      <button id="refresh" type="button">Refresh schema</button>
+    </div>
+  </header>
+  <main>
+    <section class="heading" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Database Explorer / learning</p>
+        <h1 id="page-title">Tables and columns</h1>
+        <p class="subtitle">Structure read directly from PostgreSQL's information schema.</p>
+      </div>
+    </section>
+    <p id="status" role="status" aria-live="polite">Loading schema...</p>
+    <div id="tables"></div>
+  </main>
+  <script>
+    const status = document.querySelector("#status");
+    const tables = document.querySelector("#tables");
+
+    function addCell(row, value, className = "") {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      if (className) cell.className = className;
+      row.append(cell);
+    }
+
+    function renderTable(table) {
+      const section = document.createElement("section");
+      section.className = "table-block";
+
+      const heading = document.createElement("div");
+      heading.className = "table-heading";
+      const title = document.createElement("h2");
+      title.textContent = table.name;
+      const count = document.createElement("span");
+      count.className = "column-count";
+      count.textContent = `${table.columns.length} columns`;
+      heading.append(title, count);
+
+      const scroll = document.createElement("div");
+      scroll.className = "table-scroll";
+      const tableElement = document.createElement("table");
+      const head = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      for (const label of ["Column", "Type", "Nullable", "Default", "Keys"]) {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.textContent = label;
+        headerRow.append(cell);
+      }
+      head.append(headerRow);
+
+      const body = document.createElement("tbody");
+      for (const column of table.columns) {
+        const row = document.createElement("tr");
+        addCell(row, column.name, "identifier");
+        addCell(row, column.data_type, "type");
+        addCell(row, column.nullable ? "Yes" : "No");
+        addCell(row, column.default ?? "-");
+        const keys = document.createElement("td");
+        if (column.primary_key) {
+          const primary = document.createElement("span");
+          primary.className = "key key-primary";
+          primary.textContent = "PK";
+          keys.append(primary);
+        }
+        if (column.foreign_key) {
+          const foreign = document.createElement("span");
+          foreign.className = "key key-foreign";
+          foreign.textContent = "FK";
+          keys.append(foreign);
+        }
+        if (!column.primary_key && !column.foreign_key) keys.textContent = "-";
+        row.append(keys);
+        body.append(row);
+      }
+
+      tableElement.append(head, body);
+      scroll.append(tableElement);
+      section.append(heading, scroll);
+      return section;
+    }
+
+    async function loadSchema() {
+      status.dataset.state = "loading";
+      status.textContent = "Loading schema...";
+      tables.replaceChildren();
+
+      try {
+        const response = await fetch("/api/explorer/learning-schema");
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || "Unable to load schema");
+
+        status.dataset.state = "ready";
+        if (result.length === 0) {
+          status.textContent = "The learning schema has no tables yet.";
+          return;
+        }
+
+        status.textContent = `${result.length} tables in schema learning`;
+        for (const table of result) tables.append(renderTable(table));
+      } catch (error) {
+        status.dataset.state = "error";
+        status.textContent = error.message;
+      }
+    }
+
+    document.querySelector("#refresh").addEventListener("click", loadSchema);
+    loadSchema();
+  </script>
+</body>
+</html>
